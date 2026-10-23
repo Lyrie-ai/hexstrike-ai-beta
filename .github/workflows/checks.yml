@@ -30,6 +30,31 @@ jobs:
           cache: pip
       - run: python -m pip install --require-hashes -r requirements.lock && python -m pip install '.[dev]'
       - run: python -m playwright install --with-deps chromium
+      - name: Select the distribution-integrated browser on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # Hosted Ubuntu's Chrome has an AppArmor profile allowing its sandbox.
+          browser=$(command -v google-chrome || command -v google-chrome-stable)
+          echo "HEXSTRIKE_CHROMIUM_EXECUTABLE=$browser" >> "$GITHUB_ENV"
+      - name: Verify sandboxed browser startup
+        shell: bash
+        run: |
+          python - <<'PY'
+          from hexstrike.browser.inspector import find_chromium_executable
+          from playwright.sync_api import sync_playwright
+
+          executable = find_chromium_executable()
+          print(f"Testing browser: {executable or 'Playwright Chromium'}")
+          with sync_playwright() as playwright:
+              browser = playwright.chromium.launch(
+                  executable_path=executable, chromium_sandbox=True,
+              )
+              page = browser.new_page()
+              page.set_content('<title>HexStrike browser check</title>')
+              assert page.title() == 'HexStrike browser check'
+              browser.close()
+          PY
       - run: ruff check src benchmarks hexstrike_mcp.py hexstrike_server.py
       - run: python -m pytest
       - run: python -m build
