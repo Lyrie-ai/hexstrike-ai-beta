@@ -197,7 +197,10 @@ class ConnectionPane(VerticalScroll):
             )
         else:
             title = "Configured remote MCP endpoint"
-            guidance = "Your client must be able to reach this endpoint and trust its HTTPS certificate."
+            guidance = ("Your client must be able to reach this endpoint and trust its HTTPS certificate."
+                        if self.settings['url'].startswith('https://') else
+                        "Connect using this server address and auth token. HTTP does not encrypt traffic; "
+                        "use a trusted network, encrypted VPN, or configure HTTPS for internet access.")
         yield Static(title, id="connection-title", markup=False)
         yield Static(guidance, id="connection-guidance", markup=False)
         yield Static("Server address information loads with telemetry.", id="connection-server", markup=False)

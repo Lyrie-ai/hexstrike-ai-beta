@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ipaddress
 import http.client
 import socket
 import json
@@ -49,12 +48,6 @@ def controller_url(url: str) -> str:
         raise ValueError("Controller URL must be HTTP or HTTPS")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValueError("Controller URL must not contain credentials, a query, or a fragment")
-    try:
-        loopback = ipaddress.ip_address(parsed.hostname).is_loopback
-    except ValueError:
-        loopback = parsed.hostname == "localhost"
-    if parsed.scheme == "http" and not loopback:
-        raise ValueError("Remote controller connections require HTTPS")
     path = parsed.path.rstrip("/")
     if path.endswith(("/mcp", "/sse")):
         path = path.rsplit("/", 1)[0]

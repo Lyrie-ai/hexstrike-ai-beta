@@ -625,15 +625,16 @@ def main(argv: Optional[List[str]] = None) -> int:
             loopback = ipaddress.ip_address(args.host).is_loopback
         except ValueError:
             loopback = args.host == "localhost"
-        if not loopback and not (args.allow_external_bind and args.tls_cert and args.tls_key and args.allowed_host):
-            parser.error("External bind requires --allow-external-bind, --allowed-host, --tls-cert, and --tls-key")
+        if not loopback and not (args.allow_external_bind and args.allowed_host):
+            parser.error("External bind requires --allow-external-bind and --allowed-host")
         if bool(args.tls_cert) != bool(args.tls_key):
             parser.error("Specify both --tls-cert and --tls-key")
         import uvicorn
         from mcp.server.transport_security import TransportSecuritySettings
+        authorities = {f"[{host.strip('[]')}]" if ':' in host else host for host in allowed}
         security = TransportSecuritySettings(
-            allowed_hosts=[authority for host in allowed for authority in (host, f"{host}:*")],
-            allowed_origins=[f"{scheme}://{authority}" for host in allowed
+            allowed_hosts=[authority for host in authorities for authority in (host, f"{host}:*")],
+            allowed_origins=[f"{scheme}://{authority}" for host in authorities
                              for scheme in ("http", "https") for authority in (host, f"{host}:*")],
         )
         builder = mcp.streamable_http_app if args.transport == "streamable-http" else mcp.sse_app

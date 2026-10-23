@@ -557,8 +557,11 @@ def _main(argv: Optional[List[str]] = None) -> int:
 
     p_server = sub.add_parser("server", help="Start or reopen the server dashboard using saved settings")
     p_server.add_argument("--configure", action="store_true", help="Configure remote access and authentication interactively")
+    address_mode = p_server.add_mutually_exclusive_group()
+    address_mode.add_argument("--auto", action="store_true", help="Detect a server IP and listen on its address family; retain the auth token")
+    address_mode.add_argument("--local", action="store_true", help="Listen only on localhost")
     p_server.add_argument("--url", help="Public MCP URL, ending in /mcp")
-    p_server.add_argument("--host", help="Listening address (default: loopback)")
+    p_server.add_argument("--host", help="Explicit listening address (fresh installations detect a server IP automatically)")
     p_server.add_argument("--port", type=int)
     p_server.add_argument("--tls-cert")
     p_server.add_argument("--tls-key")

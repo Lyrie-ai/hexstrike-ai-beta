@@ -4,26 +4,46 @@
 
 ## Saved settings and authentication
 
-Run `hexstrike server --configure` for guided setup. First setup generates a token unless `HEXSTRIKE_API_TOKEN` is supplied or you enter one. Saved `server.json` contains the token, listener address/port, public URL and optional certificate paths. It must be a regular file with permissions `0600`. The token persists across restarts; it is masked in the dashboard until revealed.
+Run `hexstrike` to start with automatic networking. First startup generates a token unless `HEXSTRIKE_API_TOKEN` is supplied. Optional `hexstrike server --configure` provides advanced interactive settings. Saved `server.json` contains the token, listener address/port, public URL and optional certificate paths. It must be a regular file with permissions `0600`. The token persists across restarts; it is masked in the dashboard until revealed.
 
-Stop the server before changing connection settings. The public URL is operator configuration: interface discovery cannot infer your DNS, NAT, reverse proxy or certificate name. The dashboard displays that configured URL and the host's current interface addresses.
+Stop the server before changing connection settings. Automatic mode refreshes the advertised IP when the server starts, preferring the local address used by the current SSH connection, then the routed address, then an active interface. Explicit URLs and localhost settings are preserved. Interface discovery cannot infer an external NAT mapping, DNS name or certificate; supply `--url` for those endpoints.
 
-The saved launcher uses static bearer authentication over Streamable HTTP. Clients send `Authorization: Bearer <token>`. Built-in OAuth login is not provided. Authentication permits native execution as the server account; OS permissions determine its reach.
+The saved launcher uses static bearer authentication over Streamable HTTP. Direct-IP HTTP is supported; authentication does not encrypt that traffic. Use HTTPS for internet access or an encrypted network you manage. Clients send `Authorization: Bearer <token>`. Built-in OAuth login is not provided. Authentication permits native execution as the server account; OS permissions determine its reach.
 
 ## Connection methods
 
-### This machine only
+### Automatic server address
 
 ```sh
 hexstrike server
 ```
 
-The default listener is `127.0.0.1:8000`, with endpoint `http://127.0.0.1:8000/mcp`. This URL is reachable only on the server itself. Select a remote method to connect from another computer.
+Fresh installations select a usable server IP and listen on all interfaces of that address family at port `8000`. The dashboard shows `http://<server-ip>:8000/mcp` with an actual detected address, never a wildcard bind address. Local clients can also use the corresponding loopback address. If there is no usable network address, startup falls back to localhost. On each restart, automatic mode detects address changes and retains the token.
+
+The client needs a route to the server and firewall access to the listening port. HexStrike does not change firewall rules or create NAT mappings. VPNs, including Tailscale, are managed by the operator. Addresses in the listener's family are accepted by the host-header checks, so clients can use another active server interface with the same token. IPv6 URLs enclose the address in brackets.
+
+To switch an existing installation to automatic networking:
+
+```sh
+hexstrike server --stop
+hexstrike server --auto
+```
+
+To choose an explicit listener and a different port, stop the server first, then run `hexstrike server --host SERVER_IP --port 8000`. For an external NAT address or forwarded port, also supply `--url http://EXTERNAL_ADDRESS:PORT/mcp`. Replace the uppercase placeholders with your actual network settings. Client support for remote HTTP varies; clients requiring HTTPS need the TLS or proxy setup below.
+
+### This machine only
+
+```sh
+hexstrike server --stop
+hexstrike server --local
+```
+
+This saves a localhost-only listener at the configured port. Other machines cannot connect directly. Use `--auto` to switch back after stopping the server.
 
 ### Existing HTTPS reverse proxy
 
 ```sh
-hexstrike server --url https://hexstrike.example.org/mcp --no-ui
+hexstrike server --host 127.0.0.1 --url https://hexstrike.example.org/mcp --no-ui
 ```
 
 Replace the example hostname with your endpoint. Forward `/mcp` and `/api/v6/` to the local listener at `127.0.0.1:8000`, preserving authorization and MCP session headers. The proxy must support streaming responses. Configure proxy timeouts for long-running connections. The saved launcher's URL must end in `/mcp` at the endpoint root.
@@ -59,7 +79,7 @@ hexstrike server --connection --client codex
 hexstrike server --connection --client vscode
 ```
 
-These commands print the token. Terminal clipboard copying uses OSC 52 and depends on terminal support. The server remains running when the UI closes; clients do not need a local HexStrike installation for HTTPS access.
+These commands print the token. Terminal clipboard copying uses OSC 52 and depends on terminal support. The server remains running when the UI closes; clients do not need a local HexStrike installation for remote HTTP or HTTPS access.
 
 The `connect` command can instead write client settings on the machine where it is run. It preserves unrelated entries and supports `--dry-run`. Remote HTTP entries use an environment token reference rather than embedding a secret:
 

@@ -40,7 +40,7 @@ cd hexstrike-ai-beta
 
 No manual virtual-environment creation is required. The installer does not install every security tool or replace your OS Python packages.
 
-First startup generates an authentication token and uses `http://127.0.0.1:8000/mcp`; existing saved settings are preserved. This default URL is local to the server. Remote clients need a configured HTTPS endpoint; see [connection methods](CONFIGURATION.md#connection-methods). Reopen the dashboard with the launcher path printed after installation, normally:
+First startup detects an active server IP, listens on port `8000` and generates an authentication token. Open **Connect** for the URL, token and client configuration. Existing saved settings are retained. To switch an older localhost-only installation to automatic networking, stop it with `hexstrike server --stop`, then run `hexstrike server --auto`. See [connection methods](CONFIGURATION.md#connection-methods) for localhost-only operation, explicit addresses and HTTPS. Reopen the dashboard with the launcher path printed after installation, normally:
 
 ```sh
 ~/.local/share/hexstrike/hexstrike

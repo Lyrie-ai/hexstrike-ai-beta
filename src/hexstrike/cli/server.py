@@ -11,6 +11,7 @@ import secrets
 import shlex
 import shutil
 import signal
+import socket
 import stat
 import subprocess
 import sys
@@ -22,6 +23,49 @@ import psutil
 from hexstrike.application.services import resolve_default_state_dir
 from hexstrike.application.state import _write_json
 from hexstrike.transports.telemetry import TelemetryClient, TelemetryError, controller_url
+
+
+def server_addresses() -> list[str]:
+    """Find active interface addresses, preferring the SSH or routed address."""
+    addresses = set()
+    stats = psutil.net_if_stats()
+    for interface, entries in psutil.net_if_addrs().items():
+        if interface not in stats or not stats[interface].isup:
+            continue
+        for entry in entries:
+            if entry.family not in (socket.AF_INET, socket.AF_INET6):
+                continue
+            address = ipaddress.ip_address(entry.address.split('%', 1)[0])
+            if not (address.is_loopback or address.is_link_local or address.is_multicast or address.is_unspecified):
+                addresses.add(str(address))
+    ordered = sorted(addresses, key=lambda item: (ipaddress.ip_address(item).version, int(ipaddress.ip_address(item))))
+    ssh = os.environ.get('SSH_CONNECTION', '').split()
+    preferred = ssh[2] if len(ssh) == 4 else None
+    if preferred not in addresses:
+        # UDP connect selects a route without sending data to the documentation address.
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+                probe.connect(('192.0.2.1', 9))
+                preferred = probe.getsockname()[0]
+        except OSError:
+            preferred = None
+    if preferred in addresses:
+        ordered.remove(preferred)
+        ordered.insert(0, preferred)
+    return ordered
+
+
+def listener_address(host: str) -> str:
+    if host not in ('0.0.0.0', '::'):
+        return host
+    version = 4 if host == '0.0.0.0' else 6
+    return next((address for address in server_addresses() if ipaddress.ip_address(address).version == version),
+                '127.0.0.1' if version == 4 else '::1')
+
+
+def endpoint_url(host: str, port: int, tls: bool = False) -> str:
+    authority = f'[{host}]' if ':' in host else host
+    return f"{'https' if tls else 'http'}://{authority}:{port}/mcp"
 
 
 def load_settings(root: Path) -> dict:
@@ -53,12 +97,15 @@ def validate_settings(settings: dict) -> None:
     if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
         raise ValueError("Port must be between 1 and 65535")
     host = settings["host"]
-    loopback = host == "localhost" or ipaddress.ip_address(host).is_loopback
+    if host != "localhost":
+        ipaddress.ip_address(host)
     cert, key = settings.get("tls_cert"), settings.get("tls_key")
     if bool(cert) != bool(key):
         raise ValueError("Both a TLS certificate and its private key are required")
-    if not loopback and not (cert and key and url.startswith("https://")):
-        raise ValueError("Direct remote connections need TLS; configure certificate files or an HTTPS reverse proxy")
+    if cert and not url.startswith("https://"):
+        raise ValueError("A TLS listener requires an HTTPS connection URL")
+    if settings.get('address_mode') not in (None, 'auto', 'local', 'manual'):
+        raise ValueError("Unknown server address mode")
     for file in (cert, key):
         if file and not Path(file).is_file():
             raise ValueError("A configured TLS certificate or private key does not exist")
@@ -79,13 +126,25 @@ def configure(root: Path, args) -> dict:
 def _configure_locked(root: Path, args) -> dict:
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     existing = (root / "server.json").exists()
-    changes = any(getattr(args, name, None) for name in ("url", "host", "port", "tls_cert", "tls_key", "configure", "tailscale"))
+    changes = any(getattr(args, name, None) for name in ("url", "host", "port", "tls_cert", "tls_key", "configure", "tailscale", "auto", "local"))
     if existing and changes and _running_process(root)[0] is not None:
         raise ValueError("Stop the server before changing its connection settings")
     settings = load_settings(root) if existing else {
         "url": "http://127.0.0.1:8000/mcp", "host": "127.0.0.1", "port": 8000,
         "token": os.environ.get("HEXSTRIKE_API_TOKEN") or secrets.token_urlsafe(32),
+        "address_mode": "auto",
     }
+    if any(getattr(args, name, None) for name in ('auto', 'local')) and any(
+            getattr(args, name, None) for name in ('url', 'host', 'tls_cert', 'tls_key', 'configure', 'tailscale')):
+        raise ValueError("Use --auto or --local separately from explicit connection settings")
+    if any(getattr(args, name, None) for name in ('url', 'host', 'tls_cert', 'tls_key', 'configure', 'tailscale')):
+        settings['address_mode'] = 'manual'
+    if getattr(args, 'auto', False) or getattr(args, 'local', False):
+        settings['address_mode'] = 'local' if getattr(args, 'local', False) else 'auto'
+        settings.pop('tls_cert', None)
+        settings.pop('tls_key', None)
+        settings['host'] = '127.0.0.1'
+        settings['url'] = endpoint_url(settings['host'], settings['port'])
     previous_host, previous_port = settings['host'], settings['port']
     previous_url = urlsplit(settings['url'])
     direct_url = previous_url.hostname in (previous_host, '127.0.0.1' if previous_host == '0.0.0.0' else '::1' if previous_host == '::' else previous_host) and (previous_url.port or (443 if previous_url.scheme == 'https' else 80)) == previous_port
@@ -93,12 +152,13 @@ def _configure_locked(root: Path, args) -> dict:
         value = getattr(args, name, None)
         if value is not None:
             settings[name] = value
-    if not getattr(args, 'url', None) and direct_url:
-        host = settings['host']
-        host = '127.0.0.1' if host == '0.0.0.0' else '::1' if host == '::' else host
-        authority = f'[{host}]' if ':' in host else host
-        scheme = 'https' if settings.get('tls_cert') else 'http'
-        settings['url'] = f"{scheme}://{authority}:{settings['port']}/mcp"
+    if settings.get('address_mode') == 'auto' and _running_process(root)[0] is None:
+        addresses = server_addresses()
+        preferred = addresses[0] if addresses else '127.0.0.1'
+        settings['host'] = ('0.0.0.0' if ipaddress.ip_address(preferred).version == 4 else '::') if addresses else '127.0.0.1'
+        settings['url'] = endpoint_url(preferred, settings['port'])
+    elif not getattr(args, 'url', None) and direct_url:
+        settings['url'] = endpoint_url(listener_address(settings['host']), settings['port'], bool(settings.get('tls_cert')))
     if getattr(args, "configure", False):
         if not sys.stdin.isatty():
             raise ValueError("Interactive configuration needs a terminal; use --url and transport options for unattended setup")
@@ -177,8 +237,16 @@ def _server_argv(root: Path, settings: dict) -> list[str]:
     args = ["--state-dir", str(root), "--transport", "streamable-http", "--host", settings["host"], "--port", str(settings["port"])]
     hostname = urlsplit(settings["url"]).hostname
     args += ["--allowed-host", hostname]
+    host = settings['host']
+    if host not in ('localhost', '127.0.0.1', '::1'):
+        args += ['--allow-external-bind']
+    if host in ('0.0.0.0', '::'):
+        version = 4 if host == '0.0.0.0' else 6
+        for address in server_addresses():
+            if ipaddress.ip_address(address).version == version:
+                args += ['--allowed-host', address]
     if settings.get("tls_cert"):
-        args += ["--allow-external-bind", "--tls-cert", settings["tls_cert"], "--tls-key", settings["tls_key"]]
+        args += ["--tls-cert", settings["tls_cert"], "--tls-key", settings["tls_key"]]
     return args
 
 
