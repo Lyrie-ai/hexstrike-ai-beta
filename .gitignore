@@ -1,0 +1,100 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Pytest / coverage / static analysis
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Local runtime state, databases, backups & secrets
+.env
+*.db
+*.db-shm
+*.db-wal
+*.hexstrike.bak
+*.backups/
+hexstrike_state*/
+hexstrike_workspace*/
+
+# Generated benchmark measurements
+benchmarks/*_results.json
+
+# Local credentials and client/editor settings
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+/.mcp.json
+/mcp.json
+/.cursor/
+/.claude/
+/.codex/
+/.idea/
+/.vscode/
+
+# Server state and operator artifacts
+/server.json
+/server-process.json
+/server-config.lock
+/server.lock
+/state/
+/workspace/
+/evidence/
+/backups/
+*.log
+*.log.*
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+
+# Local release and verification outputs
+/install-build/
+/artifacts/
+/test-results/
+/reports/
+/screenshots/
+/*verification*.json
+*-results.xml
+
+# OS and editor temporary files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
