@@ -14,34 +14,21 @@ Before switching the launcher, installation tests actual browser startup, JavaSc
 
 ## Install without cloning
 
-For this private beta repository, use an authenticated GitHub CLI session (`gh auth login`) with repository access:
-
-```sh
-gh api 'repos/Lyrie-ai/hexstrike-ai-beta/contents/install.sh?ref=main' \
-  -H 'Accept: application/vnd.github.raw+json' | \
-  HEXSTRIKE_GITHUB_TOKEN="$(gh auth token)" sh
-```
-
-The command downloads the installer from `main` and gives it a temporary GitHub token to fetch the source archive. The token is not written to the launcher or server settings, and is removed from the installer's environment before package installation and server startup. A checkout installation below uses your existing Git authentication instead and needs no installer token.
-
-The script downloads the source archive over HTTPS, validates its layout, creates a private runtime and opens setup. A terminal is required for the setup prompts. Without a controlling terminal, installation prints the launcher path and exits without starting a server.
-
-To inspect the script before running it:
-
-```sh
-gh api 'repos/Lyrie-ai/hexstrike-ai-beta/contents/install.sh?ref=main' \
-  -H 'Accept: application/vnd.github.raw+json' > install-hexstrike.sh
-less install-hexstrike.sh
-HEXSTRIKE_GITHUB_TOKEN="$(gh auth token)" sh install-hexstrike.sh
-```
-
-If the repository is made public later, anonymous installation can use:
-
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Lyrie-ai/hexstrike-ai-beta/main/install.sh | sh
 ```
 
-That anonymous command cannot access the current private repository. Set `HEXSTRIKE_ARCHIVE_URL` to an HTTPS archive URL for a specific published tag or commit when you need a pinned source revision. The downloaded installer must be compatible with that revision. Archive download/extraction sizes are bounded; path traversal, links and special files are rejected. `HEXSTRIKE_GITHUB_TOKEN` is sent only to `api.github.com`; cross-host archive redirects do not receive the authorization header.
+The script downloads the source from `main`, installs HexStrike and opens guided setup. No Git or GitHub CLI installation is needed. Without a controlling terminal, installation prints the launcher path and exits; run that command in a terminal to complete setup.
+
+To download and inspect the script first:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Lyrie-ai/hexstrike-ai-beta/main/install.sh -o install-hexstrike.sh
+less install-hexstrike.sh
+sh install-hexstrike.sh
+```
+
+Set `HEXSTRIKE_ARCHIVE_URL` to an HTTPS archive URL for a specific tag or commit when you need a pinned source revision. Use an installer from the same revision. The installer validates the archive before extraction and rejects path traversal, links and special files.
 
 ## Install from a checkout
 
@@ -51,7 +38,7 @@ cd hexstrike-ai-beta
 ./install.sh
 ```
 
-Use a revision containing `install.sh`. No manual virtual-environment creation is required. The installer does not install every security tool or replace your OS Python packages.
+No manual virtual-environment creation is required. The installer does not install every security tool or replace your OS Python packages.
 
 Setup asks how clients will reach the server and generates an authentication token unless you supply one. See [connection methods](CONFIGURATION.md#connection-methods). Reopen the dashboard with the launcher path printed after installation, normally:
 

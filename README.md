@@ -19,7 +19,13 @@ Ten MCP tools provide discovery, execution and result retrieval. Detailed capabi
 
 ## Install on your server
 
-Clone the private beta repository using a GitHub account with access, then run:
+Run on Linux, Kali or macOS:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Lyrie-ai/hexstrike-ai-beta/main/install.sh | sh
+```
+
+Or install from a checkout:
 
 ```sh
 git clone https://github.com/Lyrie-ai/hexstrike-ai-beta.git
@@ -27,23 +33,13 @@ cd hexstrike-ai-beta
 ./install.sh
 ```
 
-Without cloning, if GitHub CLI is installed and authenticated with repository access:
-
-```sh
-gh api 'repos/Lyrie-ai/hexstrike-ai-beta/contents/install.sh?ref=main' \
-  -H 'Accept: application/vnd.github.raw+json' | \
-  HEXSTRIKE_GITHUB_TOKEN="$(gh auth token)" sh
-```
-
-The private repository requires GitHub authentication. Both commands use `main`. The download token is used only to fetch source and is not saved in HexStrike's launcher or configuration.
-
-The installer downloads a managed Python runtime, installs dependencies from a hashed lock, sets up the dashboard and browser, and opens guided setup. You do not need to create a virtual environment or change your system Python. Linux—including Kali—and macOS need `curl` or `wget` and internet access; installing a missing Linux browser may request `sudo`. Windows users can run the server in a Linux VM.
+The installer handles Python, dependencies and browser setup, then opens guided configuration. You do not need to create a virtual environment or change your system Python. Internet access and `curl` or `wget` are required; installing a missing Linux browser may request `sudo`. Windows users can run the server in a Linux VM.
 
 Choose local access, an existing HTTPS proxy, TLS certificate files, or optional Tailscale HTTPS. Setup generates and saves an authentication token. Remote access needs a reachable HTTPS endpoint; the AI-client machine does not need HexStrike installed.
 
 [Installation, platform requirements and troubleshooting](docs/INSTALLATION.md)
 
-To install now and start later, use `./install.sh --no-start`. HexStrike uses command-line tools installed on the host; an adapter is not required for each program. A bundled container distribution is deferred to a later update.
+To install now and start later, use `./install.sh --no-start`. HexStrike uses command-line tools installed on the host; an adapter is not required for each program.
 
 ## Connect and run
 

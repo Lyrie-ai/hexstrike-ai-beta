@@ -70,8 +70,8 @@ The runner measures fresh-process MCP initialization, manifest size, local HTTP/
 
 ## Repository contents
 
-Commit source, tests, the benchmark runner, documentation, installer, packaging/CI definitions, the project logo. Keep private state, tokens, certificates, local client settings, virtual environments, caches, build outputs and test-run receipts outside version control.
+Commit source, tests, the benchmark runner, documentation, installer, packaging/CI definitions and the project logo. Keep private state, tokens, certificates, local client settings, virtual environments, caches, build outputs and test-run receipts outside version control.
 
-The wheel contains the importable package and distribution metadata. The source archive also includes docs, tests, installer, benchmark source. Review both archives before release. Do not add a file solely to claim a feature is finished; retain executable checks and user-facing documentation instead.
+The wheel contains the importable package and distribution metadata. The source archive also includes docs, tests, installer and benchmark source. Review both archives before release. Do not add a file solely to claim a feature is finished; retain executable checks and user-facing documentation instead.
 
 Before publishing, inspect `git status --short`, run `git diff --check`, check ignored/untracked files and review the staged diff. Ignore rules do not remove already-tracked sensitive files. No local audit, benchmark or successful install substitutes for reviewing the actual release contents.

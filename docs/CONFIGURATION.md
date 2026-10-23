@@ -70,7 +70,7 @@ hexstrike connect cursor --topology remote-http \
 
 The connector also includes Gemini CLI HTTP configuration. Claude Desktop and Antigravity generators support local/SSH stdio; they do not generate HTTP credential settings. Verify a real initialization and tool call in the actual client version you deploy.
 
-For a client spawning a local stdio server, use command `hexstrike-mcp`, arguments `--transport stdio`, and select the intended state through `HEXSTRIKE_STATE_DIR` in that client's process environment. Stdio reserves stdout for MCP frames.
+For a client spawning a local stdio server, use the installed launcher path (normally `~/.local/share/hexstrike/hexstrike`, expanded to an absolute path) with arguments `mcp --transport stdio`. The launcher uses the state directory selected during installation. Stdio reserves stdout for MCP frames.
 
 ## Controller and worker placement
 
@@ -100,7 +100,7 @@ A local state-reading monitor must share the controller's host and PID namespace
 
 The installer launcher always supplies its selected state path. Use that same launcher for server management and maintenance. Keep state outside the checkout. It contains databases, evidence, credentials, browser state and execution files.
 
-The installer and bundled image include the core, UI, browser and Graphiti Python dependencies. Local SQLite memory is available without an external service; configure Graphiti separately when using its integration. Installing Graphiti does not by itself establish improved findings or an external inference service.
+The installer includes the core, UI, browser and Graphiti Python dependencies. Local SQLite memory is available without an external service; configure Graphiti separately when using its integration. Installing Graphiti does not by itself establish improved findings or an external inference service.
 
 ## Service operation
 
