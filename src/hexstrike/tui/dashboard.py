@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import os
 import json
 from collections import deque
 from typing import Any, Dict, Optional
+from urllib.parse import urlsplit
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -177,7 +179,27 @@ class ConnectionPane(VerticalScroll):
         self.client = "cursor"
 
     def compose(self):
-        yield Static("Remote MCP connection", markup=False)
+        host = urlsplit(self.settings["url"]).hostname
+        try:
+            local = ipaddress.ip_address(host).is_loopback
+        except ValueError:
+            local = host == "localhost"
+        if not host:
+            title = "MCP connection not configured"
+            guidance = "Start HexStrike with its installed launcher to create connection settings."
+        elif local:
+            title = "Local MCP connection — this server only"
+            guidance = (
+                "This URL reaches HexStrike only on the server itself. On another computer, "
+                "127.0.0.1, ::1 and localhost refer to that computer, not this server. "
+                "Remote HTTPS access has not been configured. The interface addresses below "
+                "are server information, not ready-to-use MCP endpoints."
+            )
+        else:
+            title = "Configured remote MCP endpoint"
+            guidance = "Your client must be able to reach this endpoint and trust its HTTPS certificate."
+        yield Static(title, id="connection-title", markup=False)
+        yield Static(guidance, id="connection-guidance", markup=False)
         yield Static("Server address information loads with telemetry.", id="connection-server", markup=False)
         yield TextArea(self.settings["url"], read_only=True, id="connection-url")
         yield TextArea("••••••••" if self.settings["token"] else "No token configured in this monitor", read_only=True, id="connection-token")
@@ -189,8 +211,8 @@ class ConnectionPane(VerticalScroll):
                      value="cursor", allow_blank=False, id="connection-client")
         yield TextArea(self._config(), read_only=True, id="connection-config")
         yield Button("Copy config", id="copy-config", variant="primary", disabled=not self.settings["token"])
-        yield Static("Use this URL and bearer token in your AI client's remote MCP settings. "
-                     "Claude Code: run the command above. Cursor: add the JSON to MCP settings. "
+        yield Static("Copy config includes the saved token even while the preview is masked. "
+                     "Claude Code: run the generated command. Cursor: add the JSON to MCP settings. "
                      "Codex: add the TOML to its config. VS Code: use .vscode/mcp.json. "
                      "Copy uses your terminal clipboard support. If unavailable, reveal and select the text. "
                      "HTTPS names must remain unchanged for certificate verification.", markup=False)
