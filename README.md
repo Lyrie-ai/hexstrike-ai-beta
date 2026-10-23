@@ -33,9 +33,9 @@ cd hexstrike-ai-beta
 ./install.sh
 ```
 
-The installer handles Python, dependencies and browser setup, then opens guided configuration. You do not need to create a virtual environment or change your system Python. Internet access and `curl` or `wget` are required; installing a missing Linux browser may request `sudo`. Windows users can run the server in a Linux VM.
+The installer handles Python, dependencies and browser setup, then starts the server and opens the dashboard without a setup questionnaire. You do not need to create a virtual environment or change your system Python. Internet access and `curl` or `wget` are required; installing a missing Linux browser may request `sudo`. Windows users can run the server in a Linux VM.
 
-Choose local access, an existing HTTPS proxy, TLS certificate files, or optional Tailscale HTTPS. Setup generates and saves an authentication token. Remote access needs a reachable HTTPS endpoint; the AI-client machine does not need HexStrike installed.
+First startup generates and saves an authentication token and listens at `http://127.0.0.1:8000/mcp`. Existing connection settings are reused. For access from another machine, configure an HTTPS endpoint using the [connection guide](docs/CONFIGURATION.md#connection-methods); the installer does not create a public HTTPS endpoint automatically. The AI-client machine does not need HexStrike installed.
 
 [Installation, platform requirements and troubleshooting](docs/INSTALLATION.md)
 

@@ -18,7 +18,7 @@ Before switching the launcher, installation tests actual browser startup, JavaSc
 curl -fsSL https://raw.githubusercontent.com/Lyrie-ai/hexstrike-ai-beta/main/install.sh | sh
 ```
 
-The script downloads the source from `main`, installs HexStrike and opens guided setup. No Git or GitHub CLI installation is needed. Without a controlling terminal, installation prints the launcher path and exits; run that command in a terminal to complete setup.
+The script downloads the source from `main`, installs HexStrike, starts the server and opens the dashboard without a setup questionnaire. No Git or GitHub CLI installation is needed. Without a controlling terminal, installation prints the launcher path and exits; run that command in a terminal to start HexStrike.
 
 To download and inspect the script first:
 
@@ -40,7 +40,7 @@ cd hexstrike-ai-beta
 
 No manual virtual-environment creation is required. The installer does not install every security tool or replace your OS Python packages.
 
-Setup asks how clients will reach the server and generates an authentication token unless you supply one. See [connection methods](CONFIGURATION.md#connection-methods). Reopen the dashboard with the launcher path printed after installation, normally:
+First startup generates an authentication token and uses `http://127.0.0.1:8000/mcp`; existing saved settings are preserved. This default URL is local to the server. Remote clients need a configured HTTPS endpoint; see [connection methods](CONFIGURATION.md#connection-methods). Reopen the dashboard with the launcher path printed after installation, normally:
 
 ```sh
 ~/.local/share/hexstrike/hexstrike

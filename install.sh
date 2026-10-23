@@ -48,7 +48,9 @@ as_root() {
 mkdir -p "$install_root/bootstrap"
 install_root=$(CDPATH= cd -- "$install_root" && pwd)
 uv_bin="$install_root/bootstrap/uv"
-if [ ! -x "$uv_bin" ] || [ "$("$uv_bin" --version)" != 'uv 0.13.5' ]; then
+uv_version=
+if [ -x "$uv_bin" ]; then uv_version=$("$uv_bin" --version | cut -d ' ' -f 1-2); fi
+if [ "$uv_version" != 'uv 0.13.5' ]; then
     bootstrap_script=$(mktemp "${TMPDIR:-/tmp}/hexstrike-uv.XXXXXXXX")
     if command -v curl >/dev/null 2>&1; then
         curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://astral.sh/uv/0.13.5/install.sh -o "$bootstrap_script"
@@ -247,9 +249,6 @@ if [ "$start" -eq 1 ]; then
             printf '%s\n' 'Run the command above in a terminal to configure and open the dashboard.'
             exit 0
         fi
-    fi
-    if [ ! -f "$state_dir/server.json" ] && [ -t 0 ]; then
-        exec "$install_root/hexstrike" server --configure
     fi
     exec "$install_root/hexstrike" server
 fi
