@@ -97,3 +97,20 @@ def test_backup_restores_authentication_and_research_configuration(tmp_path):
     assert restored["success"]
     assert AuthenticationStore(state).get("example", "https://example.org")["headers"]["Authorization"] == "fixture-secret"
     assert json.loads((state / "research.json").read_text())["allow_private_networks"] is False
+
+
+def test_event_redaction_preserves_json_and_legacy_corruption_does_not_break_stream(tmp_path):
+    rt = HexStrikeRuntime(state_dir=tmp_path)
+    seq = rt.store.append_event('default', 'test', 'fixture', payload={
+        'output': ['password="synthetic-secret"', 'Set-Cookie: sid=synthetic-cookie; HttpOnly'],
+        'nested': {'count': 2, 'enabled': True}})
+    events = rt.store.get_events(since_seq=seq - 1)
+    assert events[0]['payload']['nested'] == {'count': 2, 'enabled': True}
+    assert 'synthetic-secret' not in json.dumps(events)
+    assert 'synthetic-cookie' not in json.dumps(events)
+    with rt.store._connect() as conn:
+        conn.execute('UPDATE telemetry_events SET payload_json = ? WHERE seq = ?', ('{"broken":', seq))
+    next_seq = rt.store.append_event('default', 'test', 'next event')
+    events = rt.store.get_events(since_seq=seq - 1)
+    assert events[0]['payload']['error'] == 'Stored event payload is invalid JSON'
+    assert events[1]['seq'] == next_seq

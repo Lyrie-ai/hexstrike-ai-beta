@@ -250,11 +250,23 @@ def _server_argv(root: Path, settings: dict) -> list[str]:
     return args
 
 
+def _process_identity(pid: int):
+    """Use Linux boot-relative process identity, unaffected by wall-clock corrections."""
+    try:
+        boot = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+        fields = Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()
+        return {'boot_id': boot, 'start_ticks': fields[19]}
+    except (OSError, IndexError):
+        return None
+
+
 def _running_process(root: Path):
     try:
         record = json.loads((root / "server-process.json").read_text())
         proc = psutil.Process(record["pid"])
-        if proc.create_time() == record["created"] and "--headless" in proc.cmdline() and str(root) in proc.cmdline():
+        identity = record.get('identity')
+        same_process = _process_identity(proc.pid) == identity if identity else proc.create_time() == record["created"]
+        if same_process and "--headless" in proc.cmdline() and str(root) in proc.cmdline():
             return proc, record
     except (OSError, ValueError, KeyError, psutil.Error):
         pass
@@ -270,6 +282,7 @@ def run_headless(root: Path, settings: dict) -> int:
         except BlockingIOError:
             raise ValueError("HexStrike is already running for this state directory") from None
         _write_json(root / "server-process.json", {"pid": os.getpid(), "created": psutil.Process().create_time(),
+                                                   "identity": _process_identity(os.getpid()),
                                                    "managed": bool(os.environ.get("HEXSTRIKE_SERVICE_MANAGED"))})
         os.environ["HEXSTRIKE_API_TOKEN"] = settings["token"]
         return main(_server_argv(root, settings))

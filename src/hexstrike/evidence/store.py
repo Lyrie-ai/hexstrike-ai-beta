@@ -846,7 +846,13 @@ class StateStore:
         payload: Optional[Dict[str, Any]] = None,
     ) -> int:
         safe_msg = redact_secrets(message)
-        safe_payload = redact_secrets(json.dumps(payload or {}, default=str))
+        def redact_value(value):
+            if isinstance(value, dict):
+                return {key: redact_value(item) for key, item in value.items()}
+            if isinstance(value, list):
+                return [redact_value(item) for item in value]
+            return redact_secrets(value) if isinstance(value, str) else value
+        safe_payload = json.dumps(redact_value(json.loads(json.dumps(payload or {}, default=str))))
         now = utc_now_iso()
         with self._lock, self._connect() as conn:
             cur = conn.execute(
@@ -881,6 +887,12 @@ class StateStore:
             rows = conn.execute(query, params).fetchall()
         if latest:
             rows.reverse()
+        def decode_payload(raw):
+            try:
+                return json.loads(raw)
+            except (ValueError, TypeError):
+                # Preserve the original database row without breaking the event stream.
+                return {"error": "Stored event payload is invalid JSON"}
         return [
             {
                 "seq": r["seq"],
@@ -889,7 +901,7 @@ class StateStore:
                 "event_type": r["event_type"],
                 "level": r["level"],
                 "message": r["message"],
-                "payload": json.loads(r["payload_json"]),
+                "payload": decode_payload(r["payload_json"]),
                 "created_at": r["created_at"],
             }
             for r in rows

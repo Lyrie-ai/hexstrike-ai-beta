@@ -239,3 +239,16 @@ def test_address_discovery_prefers_verified_ssh_address_and_ignores_down_interfa
         'offline': [SimpleNamespace(family=socket.AF_INET, address='198.51.100.20')]})
     monkeypatch.setenv('SSH_CONNECTION', '192.0.2.5 1234 100.64.0.20 22')
     assert server_addresses() == ['100.64.0.20', '192.0.2.20']
+
+
+def test_process_identity_survives_clock_change_but_rejects_pid_reuse(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from hexstrike.cli.server import _running_process
+    identity = {'boot_id': 'fixture-boot', 'start_ticks': '12345'}
+    (tmp_path / 'server-process.json').write_text(json.dumps({'pid': 42, 'created': 100, 'identity': identity}))
+    monkeypatch.setattr('hexstrike.cli.server.psutil.Process', lambda _: SimpleNamespace(
+        pid=42, create_time=lambda: 200, cmdline=lambda: ['python', str(tmp_path), '--headless']))
+    monkeypatch.setattr('hexstrike.cli.server._process_identity', lambda _: identity)
+    assert _running_process(tmp_path)[0] is not None
+    monkeypatch.setattr('hexstrike.cli.server._process_identity', lambda _: {**identity, 'start_ticks': '99999'})
+    assert _running_process(tmp_path) == (None, None)
